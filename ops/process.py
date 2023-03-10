@@ -228,7 +228,8 @@ class Align:
 # SEGMENT
 def find_nuclei(dapi, threshold, radius=15, area_min=50, area_max=500,
                 score=lambda r: r.mean_intensity,
-                smooth=1.35):
+                smooth=5):
+                #smooth=1.35):
     """
     """
 

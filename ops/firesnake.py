@@ -157,7 +157,8 @@ class Snake():
         return aligned
         
     @staticmethod
-    def _segment_nuclei(data, threshold, area_min, area_max, smooth=1.35, radius=15):
+    def _segment_nuclei(data, threshold, area_min, area_max, smooth=5, radius=15):
+    #def _segment_nuclei(data, threshold, area_min, area_max, smooth=1.35, radius=15):
         """Find nuclei from DAPI. Uses local mean filtering to find cell foreground from aligned
         but unfiltered data, then filters identified regions by mean intensity threshold and area ranges.
 
@@ -602,6 +603,84 @@ class Snake():
                 .query('Q_min >= @q_min')
                 .pipe(ops.in_situ.call_cells_mapping,df_pool))
 
+    @staticmethod
+    def _filter_reads(df_reads, true_cell_barcodes, quality_threshold=0.05 ):
+        df_reads_noGGG = df_reads[df_reads['barcode'] != 'GGGGGGGG']
+        df_reads_filt = df_reads_noGGG[df_reads_noGGG['Q_min'] > quality_threshold]
+        df_accurate_reads = df_reads_filt[df_reads_filt['barcode'].isin( true_cell_barcodes)]
+        return df_accurate_reads
+
+    @staticmethod
+    def _plot_reads_on_cells_outline( df_reads, nuclei, cells, true_cell_barcodes ):
+        import matplotlib
+        matplotlib.use('Agg')
+        import matplotlib.pyplot as plt
+
+        barcode_to_prefix = lambda x: ''.join(x[c - 1] for c in sbs_cycles)
+
+        # make a mask that shows read locations
+        read_mask = np.zeros( np.shape(nuclei))
+        true_cell_barcodes_to_num = {}
+        bc_num = 1
+        for barcode in true_cell_barcodes:
+            true_cell_barcodes_to_num[ barcode ] = bc_num
+            bc_num += 1
+    
+        for index, row in df_reads.iterrows():
+            i = row['i']
+            j = row['j']
+            if row['barcode'] not in true_cell_barcodes_to_num.keys():
+                read_mask[i,j] = 99999
+                read_mask[i+1,j] = 99999
+                read_mask[i-1,j] = 99999
+                read_mask[i,j+1] = 99999
+                read_mask[i,j-1] = 99999
+    
+                read_mask[i+1,j+1] = 99999
+                read_mask[i-1,j-1] = 99999
+                read_mask[i+1,j-1] = 99999
+                read_mask[i-1,j+1] = 99999
+            else:
+                read_mask[i,j] = true_cell_barcodes_to_num[ row['barcode'] ]
+                read_mask[i+1,j] = true_cell_barcodes_to_num[ row['barcode'] ]
+                read_mask[i-1,j] = true_cell_barcodes_to_num[ row['barcode'] ]
+                read_mask[i,j+1] = true_cell_barcodes_to_num[ row['barcode'] ]
+                read_mask[i,j-1] = true_cell_barcodes_to_num[ row['barcode'] ]
+    
+                read_mask[i+1,j+1] = true_cell_barcodes_to_num[ row['barcode'] ]
+                read_mask[i-1,j-1] = true_cell_barcodes_to_num[ row['barcode'] ]
+                read_mask[i+1,j-1] = true_cell_barcodes_to_num[ row['barcode'] ]
+                read_mask[i-1,j+1] = true_cell_barcodes_to_num[ row['barcode'] ]
+    
+        colors = list(matplotlib.colors.CSS4_COLORS)
+        colors = colors.remove( 'paleturquoise' )
+        read_mask_image = skimage.color.label2rgb( read_mask,
+                                          colors = colors,
+                                          #colors = ['darkviolet','blue','green', 'red', 'olive',
+                                          #          'cyan','magenta','lime','orange','lightseagreen'],
+                                          bg_label=0, bg_color='white')
+        fig = plt.figure( figsize=(10,10))
+        ax = fig.add_subplot( 1, 1, 1 )
+        ax.imshow( read_mask_image, cmap="Paired", interpolation='none' )
+        ax.imshow( cells>0, alpha = 0.25, cmap='Greys', interpolation='none')
+        ax.imshow( nuclei>0, alpha = 0.25, cmap='Greys', interpolation='none')
+        
+        cell_boundaries = skimage.segmentation.find_boundaries( cells)
+    
+        # plot cell boundaries with 0s as transparent
+        outlines = np.zeros(cell_boundaries.shape + (4,))
+        outlines[:, :, 3] = cell_boundaries # assuming lattice is already a bool array
+    
+        ax.imshow(outlines)
+    
+        for index, row in df_reads.iterrows():
+            i = row['i']
+            j = row['j']
+            ax.text(j,i,row['barcode'], fontsize=1)
+    
+        #plt.clf()
+        return fig
+
     # PHENOTYPE FEATURE EXTRACTION
 
     @staticmethod
@@ -891,6 +970,15 @@ class Snake():
         return nuclei_tracked
 
     # SNAKEMAKE
+    @staticmethod
+    def _combine_cell_tables( sbs_tables ):
+
+        if isinstance( sbs_tables, pd.DataFrame ):
+            sbs_tables = [sbs_tables]
+
+        df_sbs = pd.concat( sbs_tables )
+
+        return df_sbs
 
     @staticmethod
     def _merge_sbs_phenotype(sbs_tables, phenotype_tables, barcode_table, sbs_cycles, 
@@ -1114,6 +1202,8 @@ def save_output(filename, data, **kwargs):
         return save_csv(filename, data)
     elif filename.endswith('.png'):
         return save_png(filename, data)
+    elif filename.endswith('.pdf'):
+        return save_pdf(filename, data)
     else:
         raise ValueError('not a recognized filetype: ' + f)
 
@@ -1154,6 +1244,9 @@ def save_tif(filename, data_, **kwargs):
 def save_png(filename, data_):
     skimage.io.imsave(filename, data_)
 
+def save_pdf( filename, data_):
+    data_.savefig( filename )
+    
 
 def restrict_kwargs(kwargs, f):
     """Partition `kwargs` into two dictionaries based on overlap with default 

@@ -94,7 +94,7 @@ def call_cells(df_reads):
             .drop([READ, BARCODE], axis=1)  # drop the read
             # drop the read coordinates
             .drop([POSITION_I, POSITION_J], axis=1)
-            .filter(regex='^(?!Q_)')  # remove read quality scores
+            #.filter(regex='^(?!Q_)')  # remove read quality scores
             .query('cell > 0')  # remove reads not in a cell
             )
 
