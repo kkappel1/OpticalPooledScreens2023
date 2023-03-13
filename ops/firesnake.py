@@ -605,6 +605,8 @@ class Snake():
 
     @staticmethod
     def _filter_reads(df_reads, true_cell_barcodes, quality_threshold=0.05 ):
+        if df_reads is None:
+            return
         df_reads_noGGG = df_reads[df_reads['barcode'] != 'GGGGGGGG']
         df_reads_filt = df_reads_noGGG[df_reads_noGGG['Q_min'] > quality_threshold]
         df_accurate_reads = df_reads_filt[df_reads_filt['barcode'].isin( true_cell_barcodes)]
@@ -612,6 +614,8 @@ class Snake():
 
     @staticmethod
     def _plot_reads_on_cells_outline( df_reads, nuclei, cells, true_cell_barcodes ):
+        if df_reads is None:
+            return
         import matplotlib
         matplotlib.use('Agg')
         import matplotlib.pyplot as plt
