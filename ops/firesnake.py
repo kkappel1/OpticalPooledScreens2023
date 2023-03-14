@@ -543,6 +543,8 @@ class Snake():
         df_reads : pandas DataFrame
             Table of all reads with base calls resulting from SBS compensation and related metadata.
         """
+        if len(df_bases) ==0:
+            return
         if df_bases is None:
             return
         if correction_only_in_cells:
@@ -589,6 +591,8 @@ class Snake():
             Table of all cells containing sequencing reads, listing top two most common barcode
             sequences. If df_pool is supplied, prioritizes reads mapping to expected sequences.
         """
+        if len( df_reads ) == 0:
+            return
         if df_reads is None:
             return
         
@@ -605,6 +609,8 @@ class Snake():
 
     @staticmethod
     def _filter_reads(df_reads, true_cell_barcodes, quality_threshold=0.05 ):
+        if len( df_reads ) == 0:
+            return
         if df_reads is None:
             return
         df_reads_noGGG = df_reads[df_reads['barcode'] != 'GGGGGGGG']
@@ -614,6 +620,8 @@ class Snake():
 
     @staticmethod
     def _plot_reads_on_cells_outline( df_reads, nuclei, cells, true_cell_barcodes ):
+        if len( df_reads ) == 0:
+            return
         if df_reads is None:
             return
         import matplotlib
@@ -1165,13 +1173,25 @@ def remove_channels(data, remove_index):
 
 # IO
 
+# load many files, skipping empty files
+def load_many_files( many_files ):
+    loaded_files = []
+    for f in many_files:
+        try:
+            loaded_f = load_file(f)
+            loaded_files.append( loaded_f )
+        except pd.errors.EmptyDataError as e:
+            pass
+    return loaded_files 
+
 
 def load_arg(x):
     """Try loading data from `x` if it is a filename or list of filenames.
     Otherwise just return `x`.
     """
     one_file = load_file
-    many_files = lambda x: [load_file(f) for f in x]
+    many_files = load_many_files
+    #many_files = lambda x: [load_file(f) for f in x]
     
     for f in one_file, many_files:
         try:
