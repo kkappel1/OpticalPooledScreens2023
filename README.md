@@ -6,35 +6,24 @@ Analysis resources for the publication [*Pooled genetic perturbation screens wit
 
 Download the repository (e.g., on Github use the green "Clone or download" button, then "Download ZIP").
 
-In Terminal, go to the OpticalPooledScreens project directory and create a Python 3 virtual environment using a command like:
+In Terminal, go to the OpticalPooledScreens2023 project directory and create a conda environment using a command like:
 
 ```bash
-python3 -m venv venv
+conda create --name sbs_2023 python=3.8
 ```
 
-If the python3 command isn't available, you might need to specify the full path. E.g., if [Miniconda](https://conda.io/miniconda.html) is installed in the home directory:
+This creates a conda environment called `sbs_2023` for project-specific resources. 
 
 ```bash
-~/miniconda3/bin/python -m venv venv
+conda activate sbs_2023
+pip install wheel
+pip install -r requirements.txt
+pip install -e .
 ```
 
-This creates a virtual environment called `venv` for project-specific resources. The commands in `install.sh` add required packages to the virtual environment:
-
+Additionally, if running CellPose segmentation locally and you want to use the gui:
 ```bash
-sh install.sh
-```
-
-Within this script, the `ops` package is installed with `pip install -e`, so the source code in the `ops/` directory can be modified in place.
-
-Once install is complete, activate the virtual environment from the project directory:
-
-```bash
-source venv/bin/activate
-```
-
-Additionally, if using the CellPose segmentation method, this must be installed in the virtual environment:
-```bash
-pip install cellpose[gui]
+python -m pip install cellpose[gui]
 ```
 
 ## Running an example pipeline
